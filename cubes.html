@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вращение Цветов</title>
+    <style>
+        :root {
+            --neon-yellow: #ffe600;
+            --neon-cyan: #00f0ff;
+            --neon-pink: #ff0055;
+            --neon-green: #00ff66;
+            --neon-purple: #bc00ff;
+            --panel-bg: #131722;
+        }
+
+        body {
+            background-color: #080a10;
+            color: #ffffff;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        .roulette-panel {
+            background: var(--panel-bg);
+            border: 3px solid var(--neon-pink);
+            border-radius: 24px;
+            padding: 30px;
+            width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 22px;
+            box-shadow: 0 0 35px rgba(255, 0, 85, 0.25), inset 0 0 20px rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .roulette-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(to right, var(--neon-yellow), var(--neon-pink), var(--neon-cyan));
+        }
+
+        .exit-btn {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            color: #94a3b8;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-decoration: none;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .exit-btn:hover {
+            color: #fff;
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .title-display {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-align: center;
+            background: linear-gradient(to right, var(--neon-yellow), var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 8px rgba(0, 240, 255, 0.4));
+        }
+
+        .cubes-outer-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 110px;
+            box-shadow: inset 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .cubes-container {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cube {
+            width: 52px;
+            height: 52px;
+            background: #232838;
+            border-radius: 12px;
+            border: 2px solid #3a4156;
+            transition: background-color 0.1s ease, transform 0.15s ease, box-shadow 0.1s;
+            box-shadow: inset 0 4px 8px rgba(255,255,255,0.05), 0 8px 16px rgba(0,0,0,0.4);
+            position: relative;
+        }
+
+        .cube::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            height: 40%;
+            background: linear-gradient(rgba(255,255,255,0.15), rgba(255,255,255,0));
+            border-radius: 9px 9px 0 0;
+            pointer-events: none;
+        }
+
+        /* Обычный Ролл */
+        .cube.active-roll {
+            transform: scale(1.25) rotate(10deg);
+        }
+        .cube.active-roll-alt {
+            transform: scale(0.85) rotate(-10deg);
+        }
+
+        /* Зарядка Мега Ролла (серый цвет) */
+        .cube.mega-waiting {
+            transform: scale(0.95);
+            animation: pulseGray 0.4s infinite alternate;
+        }
+
+        @keyframes pulseGray {
+            0% { box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 0 5px rgba(255,255,255,0.05); }
+            100% { box-shadow: inset 0 0 5px rgba(0,0,0,0.5), 0 0 15px rgba(255,255,255,0.2); }
+        }
+
+        /* Финальный взрыв цвета в Мега Ролле */
+        .cube.mega-reveal {
+            transform: scale(1.3) rotate(360deg);
+        }
+
+        .cube.hidden-cube {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .selector-buttons {
+            display: flex;
+            gap: 6px;
+            justify-content: space-between;
+        }
+
+        .count-btn {
+            flex: 1;
+            background: #1e2335;
+            border: 2px solid #313852;
+            color: #94a3b8;
+            padding: 10px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .count-btn.selected {
+            background: var(--neon-yellow);
+            color: #000;
+            border-color: var(--neon-yellow);
+            box-shadow: 0 0 15px rgba(255, 230, 0, 0.4);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .spin-btn {
+            background: linear-gradient(135deg, #00ff66, #00b344);
+            color: #000;
+            border: none;
+            padding: 14px;
+            font-weight: 900;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .mega-btn {
+            background: linear-gradient(135deg, var(--neon-purple), #8000ff);
+            color: #fff;
+            border: 2px solid #a600ff;
+            padding: 14px;
+            font-weight: 900;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            box-shadow: 0 4px 20px rgba(188, 0, 255, 0.2);
+        }
+
+        .mega-btn.hide-mega {
+            display: none;
+        }
+
+        .spin-btn:disabled, .mega-btn:disabled {
+            background: #232838 !important;
+            color: #555d73 !important;
+            border: 2px solid #2e3448 !important;
+            cursor: not-allowed;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .spin-btn:hover:not(:disabled), .mega-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        
+        .spin-btn:hover:not(:disabled) { box-shadow: 0 0 25px rgba(0, 255, 102, 0.5); }
+        .mega-btn:hover:not(:disabled) { box-shadow: 0 0 25px rgba(188, 0, 255, 0.6); }
+    </style>
+</head>
+<body>
+
+<div class="roulette-panel">
+    <a href="index.html" class="exit-btn">🚪 На Главную</a>
+
+    <div class="title-display">ROLL</div>
+
+    <div class="cubes-outer-box">
+        <div class="cubes-container">
+            <div class="cube" id="cube1"></div>
+            <div class="cube" id="cube2"></div>
+            <div class="cube" id="cube3"></div>
+            <div class="cube" id="cube4"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="selector-buttons">
+            <button class="count-btn" id="btn1" onclick="selectCubes(1)">1 КУБ</button>
+            <button class="count-btn" id="btn2" onclick="selectCubes(2)">2 КУБА</button>
+            <button class="count-btn" id="btn3" onclick="selectCubes(3)">3 КУБА</button>
+            <button class="count-btn selected" id="btn4" onclick="selectCubes(4)">4 КУБА</button>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="spin-btn" id="spinButton" onclick="startNormalSpin()">Обычный Ролл</button>
+            <button class="mega-btn" id="megaButton" onclick="startMegaSpin()">⚡ МЕГА РОЛЛ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedCount = 4;
+    let isSpinning = false;
+    const neonColors = ["#ffe600", "#00f0ff", "#ff0055", "#bc00ff", "#00ff66"];
+
+    function playSound(freq, type, duration, volume = 0.06) {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + duration);
+            
+            gain.gain.setValueAtTime(volume, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + duration);
+        } catch(e) {}
+    }
+
+    function selectCubes(count) {
+        if (isSpinning) return;
+        selectedCount = count;
+
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById(`btn${i}`).classList.remove('selected');
+        }
+        document.getElementById(`btn${count}`).classList.add('selected');
+
+        const megaBtn = document.getElementById('megaButton');
+        if (count === 4) {
+            megaBtn.classList.remove('hide-mega');
+        } else {
+            megaBtn.classList.add('hide-mega');
+        }
+
+        updateCubesLayout();
+    }
+
+    function updateCubesLayout() {
+        for (let i = 1; i <= 4; i++) {
+            let cube = document.getElementById(`cube${i}`);
+            cube.style.backgroundColor = "#232838";
+            cube.style.boxShadow = "inset 0 4px 8px rgba(255,255,255,0.05), 0 8px 16px rgba(0,0,0,0.4)";
+            cube.style.transform = "none";
+            cube.className = "cube";
+            
+            if (i > selectedCount) {
+                cube.classList.add('hidden-cube');
+            }
+        }
+    }
+
+    // ОБЫЧНЫЙ РОЛЛ
+    function startNormalSpin() {
+        if (isSpinning) return;
+        isSpinning = true;
+        setButtonsDisabled(true);
+
+        let currentTick = 0;
+        let totalTicks = 15;
+
+        let interval = setInterval(() => {
+            playSound(320, 'sine', 0.08);
+
+            for (let i = 1; i <= 4; i++) {
+                let cube = document.getElementById(`cube${i}`);
+                if (i <= selectedCount) {
+                    let randomColor = neonColors[Math.floor(Math.random() * neonColors.length)];
+                    cube.style.backgroundColor = randomColor;
+                    cube.style.boxShadow = `0 0 25px ${randomColor}, inset 0 -4px 10px rgba(0,0,0,0.4)`;
+                    
+                    cube.className = "cube";
+                    if (currentTick % 2 === 0) {
+                        cube.classList.add(i % 2 === 0 ? 'active-roll' : 'active-roll-alt');
+                    } else {
+                        cube.classList.add(i % 2 === 0 ? 'active-roll-alt' : 'active-roll');
+                    }
+                }
+            }
+            currentTick++;
+
+            if (currentTick >= totalTicks) {
+                clearInterval(interval);
+                endSpin();
+            }
+        }, 110);
+    }
+
+    // МЕГА РОЛЛ (СТАНОВИТСЯ СЕРЫМ НА 3 СЕКУНДЫ -> СРАЗУ ВЫДАЕТ РАНДОМ ЦВЕТА)
+    function startMegaSpin() {
+        if (isSpinning) return;
+        isSpinning = true;
+        setButtonsDisabled(true);
+
+        // Становятся серыми
+        for (let i = 1; i <= 4; i++) {
+            let cube = document.getElementById(`cube${i}`);
+            if (i <= selectedCount) {
+                cube.style.backgroundColor = "#4a526d"; 
+                cube.style.boxShadow = "inset 0 4px 15px rgba(0,0,0,0.8)";
+                cube.className = "cube mega-waiting";
+            }
+        }
+
+        // Звуки тика таймера во время ожидания
+        let waitSeconds = 0;
+        let waitInterval = setInterval(() => {
+            waitSeconds++;
+            if (waitSeconds < 3) {
+                playSound(250 + (waitSeconds * 120), 'triangle', 0.2, 0.08); 
+            } else {
+                clearInterval(waitInterval);
+            }
+        }, 1000);
+
+        // Через 3 секунды СРАЗУ выдает цвета с эффектом переворота
+        setTimeout(() => {
+            playSound(600, 'sawtooth', 0.3, 0.1); // Звук раскрытия
+
+            for (let i = 1; i <= 4; i++) {
+                let cube = document.getElementById(`cube${i}`);
+                if (i <= selectedCount) {
+                    let randomColor = neonColors[Math.floor(Math.random() * neonColors.length)];
+                    cube.style.backgroundColor = randomColor;
+                    cube.style.boxShadow = `0 0 35px ${randomColor}, inset 0 -4px 10px rgba(0,0,0,0.4)`;
+                    cube.className = "cube mega-reveal"; 
+                }
+            }
+
+            // Включаем обратно кнопки
+            setTimeout(() => {
+                isSpinning = false;
+                setButtonsDisabled(false);
+            }, 400);
+
+        }, 3000); 
+    }
+
+    function endSpin() {
+        isSpinning = false;
+        setButtonsDisabled(false);
+
+        for (let i = 1; i <= 4; i++) {
+            let cube = document.getElementById(`cube${i}`);
+            if (i <= selectedCount) {
+                cube.className = "cube";
+                cube.style.transform = "scale(1.05)";
+            }
+        }
+    }
+
+    function setButtonsDisabled(disabled) {
+        document.getElementById('spinButton').disabled = disabled;
+        document.getElementById('megaButton').disabled = disabled;
+    }
+
+    updateCubesLayout();
+</script>
+
+</body>
+</html>
+
+</body>
+</html>

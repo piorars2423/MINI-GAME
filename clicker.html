@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Кликер</title>
+    <style>
+        :root {
+            --bg-color: #0f111a;
+            --main-color: #ffe600;
+            --accent-color: #ff0055;
+            --panel-bg: #1e2233;
+            --text-color: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .game-container {
+            display: flex;
+            width: 100%;
+            max-width: 900px;
+            height: 600px;
+            background: var(--panel-bg);
+            border: 4px solid var(--main-color);
+            border-radius: 16px;
+            box-shadow: 0 0 30px rgba(255, 230, 0, 0.2);
+            overflow: hidden;
+            transition: height 0.3s ease, border-color 0.3s ease;
+        }
+
+        .levels-menu, .shop-menu {
+            width: 260px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .levels-menu { border-right: 2px solid rgba(255, 230, 0, 0.2); }
+        .shop-menu { border-left: 2px solid rgba(255, 230, 0, 0.2); }
+
+        h3 {
+            margin: 0 0 5px 0;
+            text-align: center;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .levels-menu h3 { color: var(--main-color); }
+        .shop-menu h3 { color: var(--accent-color); }
+
+        .level-btn {
+            background: #2d324d;
+            color: #fff;
+            border: 2px solid #444b73;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .level-btn.active {
+            border-color: var(--main-color);
+            background: rgba(255, 230, 0, 0.1);
+            box-shadow: 0 0 10px rgba(255, 230, 0, 0.2);
+        }
+
+        .level-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .level-btn .lock-cost {
+            font-size: 11px;
+            color: var(--accent-color);
+            display: block;
+            margin-top: 4px;
+        }
+
+        .click-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            position: relative;
+            background: radial-gradient(circle, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0) 70%);
+        }
+
+        .global-exit-btn {
+            background: var(--accent-color);
+            color: white;
+            border: 2px solid #ffffff;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 0, 85, 0.3);
+            transition: all 0.2s;
+            text-align: center;
+            width: 90%;
+            max-width: 250px;
+            margin-bottom: 5px;
+        }
+        .global-exit-btn:hover {
+            background: #b91c1c;
+            transform: scale(1.03);
+        }
+
+        .stats { text-align: center; }
+        .score-display {
+            font-size: 38px;
+            font-weight: 900;
+            color: var(--main-color);
+            text-shadow: 0 0 10px rgba(255, 230, 0, 0.3);
+        }
+        .cps-display {
+            font-size: 14px;
+            color: #8892b0;
+            margin-top: 5px;
+        }
+
+        .current-level-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 16px;
+            border-radius: 20px;
+        }
+
+        .click-target {
+            width: 160px;
+            height: 160px;
+            background: var(--main-color);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 35px rgba(255, 230, 0, 0.4);
+            transition: transform 0.05s, background-color 0.3s, box-shadow 0.3s;
+            position: relative;
+            touch-action: manipulation;
+        }
+
+        .click-target:active:not(.banned) {
+            transform: scale(0.92);
+        }
+
+        .click-target::before {
+            content: 'ТАП!';
+            color: #000;
+            font-weight: 900;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+
+        .click-target.banned {
+            background: var(--accent-color) !important;
+            box-shadow: 0 0 35px rgba(255, 0, 85, 0.6) !important;
+            cursor: not-allowed;
+        }
+
+        .click-target.banned::before {
+            content: attr(data-timer);
+            color: #fff;
+            font-size: 20px;
+        }
+
+        .shop-item {
+            background: #2d324d;
+            border: 2px solid #444b73;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .shop-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .shop-item-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .shop-item-cost { color: var(--main-color); font-weight: bold; }
+        .shop-item-desc { font-size: 11px; color: #a8b2d1; }
+
+        .floating-text {
+            position: absolute;
+            color: var(--main-color);
+            font-weight: 900;
+            font-size: 24px;
+            pointer-events: none;
+            animation: floatUp 0.5s ease-out forwards;
+            text-shadow: 0 0 5px #000;
+            z-index: 10;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-70px) scale(0.8); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+                align-items: flex-start;
+            }
+
+            .game-container {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 10px);
+                border-width: 3px;
+            }
+
+            .click-zone {
+                order: 1;
+                width: 100%;
+                height: 360px;
+                padding: 15px;
+                border-bottom: 2px solid rgba(255, 230, 0, 0.15);
+            }
+
+            .score-display { font-size: 34px; }
+            .click-target { width: 130px; height: 130px; }
+
+            .levels-menu {
+                order: 2;
+                width: 100%;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                border-right: none;
+                border-bottom: 2px solid rgba(255, 230, 0, 0.15);
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .levels-menu h3, .shop-menu h3 {
+                display: none;
+            }
+
+            .level-btn {
+                flex-shrink: 0;
+                min-width: 160px;
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            .shop-menu {
+                order: 3;
+                width: 100%;
+                border-left: none;
+                padding: 12px;
+                gap: 10px;
+            }
+            
+            .shop-item {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    
+    <div class="levels-menu">
+        <h3>Локации</h3>
+        <button class="level-btn active" id="lvl0" onclick="changeLevel(0)">
+            🟢 Старт
+            <span class="lock-cost">Множитель: x1</span>
+        </button>
+        <button class="level-btn" id="lvl1" disabled onclick="changeLevel(1)">
+            🟡 Неоновая Зона
+            <span class="lock-cost" id="lock1">Цена: 150 (x2)</span>
+        </button>
+        <button class="level-btn" id="lvl2" disabled onclick="changeLevel(2)">
+            🔴 Киберпанк
+            <span class="lock-cost" id="lock2">Цена: 1K (x5)</span>
+        </button>
+        <button class="level-btn" id="lvl3" disabled onclick="changeLevel(3)">
+            🟣 Космос
+            <span class="lock-cost" id="lock3">Цена: 10K (x15)</span>
+        </button>
+    </div>
+
+    <div class="click-zone" id="clickZone">
+        <button class="global-exit-btn" onclick="goToIndex()">🚪 Выйти на главный сайт</button>
+
+        <div class="stats">
+            <div class="score-display" id="score">0</div>
+            <div class="cps-display">Авто-клик: <span id="cps">0</span>/сек</div>
+        </div>
+        
+        <div class="click-target" id="clickTarget"></div>
+        
+        <div class="current-level-title" id="currentLevelName">Локация: Старт</div>
+    </div>
+
+    <div class="shop-menu">
+        <h3>Апгрейды</h3>
+        
+        <div class="shop-item" id="upgClick" onclick="buyUpgrade('click')">
+            <div class="shop-item-title">
+                <span>Сила Клика</span>
+                <span class="shop-item-cost" id="clickCost">15</span>
+            </div>
+            <div class="shop-item-desc">Клик +1. Всего: +<span id="clickPower">1</span></div>
+        </div>
+
+        <div class="shop-item" id="upgAuto1" onclick="buyUpgrade('auto1')">
+            <div class="shop-item-title">
+                <span>Клик-Бот</span>
+                <span class="shop-item-cost" id="auto1Cost">50</span>
+            </div>
+            <div class="shop-item-desc">Приносит +1/сек. Куплено: <span id="auto1Count">0</span></div>
+        </div>
+
+        <div class="shop-item" id="upgAuto2" onclick="buyUpgrade('auto2')">
+            <div class="shop-item-title">
+                <span>Мега-Шахта</span>
+                <span class="shop-item-cost" id="auto2Cost">400</span>
+            </div>
+            <div class="shop-item-desc">Приносит +8/сек. Куплено: <span id="auto2Count">0</span></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let state = {
+        score: 0,
+        clickPower: 1,
+        cps: 0,
+        currentMultiplier: 1,
+        currentLvlIndex: 0,
+        
+        upgrades: {
+            click: { cost: 15, baseCost: 15, count: 1 },
+            auto1: { cost: 50, baseCost: 50, count: 0, power: 1 },
+            auto2: { cost: 400, baseCost: 400, count: 0, power: 8 }
+        },
+        
+        levels: [
+            { name: "Старт", mult: 1, cost: 0, color: "#ffe600", bg: "#0f111a", unlocked: true },
+            { name: "Неоновая Зона", mult: 2, cost: 150, color: "#00f0ff", bg: "#140f1a", unlocked: false },
+            { name: "Киберпанк", mult: 5, cost: 1000, color: "#ff0055", bg: "#1a160f", unlocked: false },
+            { name: "Космос", mult: 15, cost: 10000, color: "#bc00ff", bg: "#090914", unlocked: false }
+        ]
+    };
+
+    function goToIndex() {
+        window.location.href = "index.html";
+    }
+
+    let clickTimestamps = []; 
+    let isBanned = false; 
+    let banTimer = 0;
+
+    const target = document.getElementById('clickTarget');
+    const scoreDiv = document.getElementById('score');
+    const cpsDiv = document.getElementById('cps');
+
+    target.addEventListener('mousedown', (e) => handleTap(e));
+    target.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleTap(e.touches[0]);
+    });
+
+    function handleTap(e) {
+        if (isBanned) return;
+
+        if (e.isTrusted === false) {
+            triggerBan(30); 
+            return;
+        }
+
+        const currentTime = Date.now();
+        clickTimestamps.push(currentTime);
+        clickTimestamps = clickTimestamps.filter(timestamp => currentTime - timestamp <= 1000);
+
+        if (clickTimestamps.length > 20) {
+            triggerBan(30); 
+            createFloatingText(e, "БАН 30 СЕК!", true);
+            return;
+        }
+
+        let gain = state.clickPower * state.currentMultiplier;
+        state.score += gain;
+        
+        createFloatingText(e, `+${gain}`, false);
+        updateUI();
+        checkLevelUnlocks();
+    }
+
+    function triggerBan(seconds) {
+        isBanned = true;
+        banTimer = seconds;
+        clickTimestamps = []; 
+        target.classList.add('banned');
+        target.setAttribute('data-timer', `БАН ${banTimer}с`);
+
+        if (window.banCountdown) clearInterval(window.banCountdown);
+
+        window.banCountdown = setInterval(() => {
+            banTimer--;
+            if (banTimer <= 0) {
+                clearInterval(window.banCountdown);
+                isBanned = false;
+                target.classList.remove('banned');
+                target.removeAttribute('data-timer');
+            } else {
+                target.setAttribute('data-timer', `БАН ${banTimer}с`);
+            }
+        }, 1000);
+    }
+
+    function createFloatingText(e, text, isWarning = false) {
+        const rect = target.getBoundingClientRect();
+        const zone = document.getElementById('clickZone');
+        const fText = document.createElement('div');
+        fText.classList.add('floating-text');
+        fText.innerText = text;
+        
+        const x = e.clientX - rect.left + target.offsetLeft - target.offsetWidth/2;
+        const y = e.clientY - rect.top + target.offsetTop - target.offsetHeight/2;
+        
+        fText.style.left = `${x}px`;
+        fText.style.top = `${y}px`;
+        
+        if (isWarning) {
+            fText.style.color = "#ff0055";
+            fText.style.fontSize = "26px";
+        } else {
+            fText.style.color = state.levels[state.currentLvlIndex].color;
+        }
+
+        zone.appendChild(fText);
+        setTimeout(() => fText.remove(), 500);
+    }
+
+    function buyUpgrade(type) {
+        let upg = state.upgrades[type];
+        if (state.score >= upg.cost) {
+            state.score -= upg.cost;
+            
+            if (type === 'click') {
+                state.clickPower += 1;
+                upg.count += 1;
+            } else {
+                upg.count += 1;
+                state.cps += upg.power;
+            }
+            
+            upg.cost = Math.floor(upg.baseCost * Math.pow(1.3, upg.count));
+            updateUI();
+        }
+    }
+
+    function changeLevel(index) {
+        let lvl = state.levels[index];
+        
+        if (!lvl.unlocked) {
+            if (state.score >= lvl.cost) {
+                state.score -= lvl.cost;
+                lvl.unlocked = true;
+                const lockSpan = document.getElementById(`lock${index}`);
+                if (lockSpan) lockSpan.innerText = `Множитель: x${lvl.mult}`;
+            } else {
+                return;
+            }
+        }
+        
+        state.currentLvlIndex = index;
+        state.currentMultiplier = lvl.mult;
+        
+        document.documentElement.style.setProperty('--main-color', lvl.color);
+        document.documentElement.style.setProperty('--bg-color', lvl.bg);
+        document.getElementById('currentLevelName').innerText = `Локация: ${lvl.name}`;
+        
+        for (let i = 0; i < state.levels.length; i++) {
+            document.getElementById(`lvl${i}`).classList.remove('active');
+        }
+        document.getElementById(`lvl${index}`).classList.add('active');
+        
+        updateUI();
+    }
+
+    function checkLevelUnlocks() {
+        state.levels.forEach((lvl, idx) => {
+            const btn = document.getElementById(`lvl${idx}`);
+            if (!lvl.unlocked) {
+                btn.disabled = state.score < lvl.cost;
+            } else {
+                btn.disabled = false;
+            }
+        });
+    }
+
+    function updateUI() {
+        scoreDiv.innerText = Math.floor(state.score).toLocaleString();
+        cpsDiv.innerText = (state.cps * state.currentMultiplier).toLocaleString();
+        
+        document.getElementById('clickCost').innerText = state.upgrades.click.cost;
+        document.getElementById('clickPower').innerText = state.clickPower;
+        
+        document.getElementById('auto1Cost').innerText = state.upgrades.auto1.cost;
+        document.getElementById('auto1Count').innerText = state.upgrades.auto1.count;
+        
+        document.getElementById('auto2Cost').innerText = state.upgrades.auto2.cost;
+        document.getElementById('auto2Count').innerText = state.upgrades.auto2.count;
+
+        Object.keys(state.upgrades).forEach(key => {
+            const item = document.getElementById(`upg${key.charAt(0).toUpperCase() + key.slice(1)}`);
+            if (state.score >= state.upgrades[key].cost) {
+                item.classList.remove('disabled');
+            } else {
+                item.classList.add('disabled');
+            }
+        });
+    }
+
+    setInterval(() => {
+        if (state.cps > 0) {
+            state.score += (state.cps * state.currentMultiplier);
+            updateUI();
+            checkLevelUnlocks();
+        }
+    }, 1000);
+
+    updateUI();
+    checkLevelUnlocks();
+</script>
+
+</body>
+</html>
